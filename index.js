@@ -15,22 +15,25 @@ module.exports = function (options) {
     var pieces = req.url.replace(/^\/+/, '').split('/')
     var version = pieces[0]
 
-    version = version.replace(/v(\d{1})\.(\d{1})\.(\d{1})/, '$1.$2.$3')
-    version = version.replace(/v(\d{1})\.(\d{1})/, '$1.$2.0')
-    version = version.replace(/v(\d{1})/, '$1.0.0')
+    var expandedVersionXRange = version
+    expandedVersionXRange = expandedVersionXRange.replace(/v(\d{1})\.(\d{1})\.(\d{1})/, '$1.$2.$3')
+    expandedVersionXRange = expandedVersionXRange.replace(/v(\d{1})\.(\d{1})/, '$1.$2.x')
+    expandedVersionXRange = expandedVersionXRange.replace(/v(\d{1})/, '$1.x.x')
 
-    if (semver.valid(version)) {
-      var urlOffset = pieces[0].length + 1
-      if (urlOffset < req.url.length) {
-        req.url = req.url.substring(urlOffset)
-      } else {
-        req.url = '/';
-      }
-      req.headers = req.headers || []
-      req.headers['accept-version'] = version
-    } else {
-      return next(new restify.InvalidVersionError('This is an invalid version'))
+    var specificVersionFromXRange = expandedVersionXRange.replace(/\.x/g, '.0')
+
+    if (!semver.valid(specificVersionFromXRange)) {
+      return next(new restify.InvalidVersionError('Invalid version format.'))
     }
+
+    var urlOffset = pieces[0].length + 1
+    if (urlOffset < req.url.length) {
+      req.url = req.url.substring(urlOffset)
+    } else {
+      req.url = '/';
+    }
+    req.headers = req.headers || []
+    req.headers['accept-version'] = expandedVersionXRange
 
     next()
   }
